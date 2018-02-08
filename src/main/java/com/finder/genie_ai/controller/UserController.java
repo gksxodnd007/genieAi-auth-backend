@@ -50,32 +50,23 @@ public class UserController {
 
     private UserRepository userRepository;
     private PlayerRepository playerRepository;
-    private HistoryRepository historyRepository;
     private ObjectMapper mapper;
     private SessionTokenRedisRepository sessionTokenRedisRepository;
     private BCryptPasswordEncoder bCryptPasswordEncoder;
-    private WeaponRelationRepository weaponRelationRepository;
-    private WeaponRepository weaponRepository;
 
     private final ModelMapper modelMapper = new ModelMapper();
 
     @Autowired
     public UserController(UserRepository userRepository,
                           PlayerRepository playerRepository,
-                          HistoryRepository historyRepository,
                           SessionTokenRedisRepository sessionTokenRedisRepository,
                           ObjectMapper mapper,
-                          BCryptPasswordEncoder bCryptPasswordEncoder,
-                          WeaponRelationRepository weaponRelationRepository,
-                          WeaponRepository weaponRepository) {
+                          BCryptPasswordEncoder bCryptPasswordEncoder) {
         this.userRepository = userRepository;
         this.playerRepository = playerRepository;
-        this.historyRepository = historyRepository;
         this.sessionTokenRedisRepository = sessionTokenRedisRepository;
         this.mapper = mapper;
         this.bCryptPasswordEncoder = bCryptPasswordEncoder;
-        this.weaponRelationRepository = weaponRelationRepository;
-        this.weaponRepository = weaponRepository;
     }
 
     @Transactional
@@ -110,62 +101,6 @@ public class UserController {
             return userDTO;
         }
 
-    }
-
-    @Transactional
-    @RequestMapping(value = "/register/game", method = RequestMethod.POST, produces = "application/json")
-    public @ResponseBody PlayerDTO registerPlayer(@RequestHeader(name = "session-token") String token,
-                                                  @RequestBody @Valid PlayerRegisterCommand command,
-                                                  BindingResult bindingResult,
-                                                  HttpServletRequest request) throws JsonProcessingException {
-        if (!sessionTokenRedisRepository.isSessionValid(token)) {
-            throw new UnauthorizedException();
-        }
-
-        JsonElement element = new JsonParser().parse(sessionTokenRedisRepository.findSessionToken(token));
-        SessionModel sessionModel = new SessionModel(request.getRemoteAddr(), LocalDateTime.parse(element.getAsJsonObject().get("signin_at").getAsString()), LocalDateTime.now());
-        System.out.println(mapper.writeValueAsString(sessionModel));
-        sessionTokenRedisRepository.updateSessionToken(token, mapper.writeValueAsString(sessionModel));
-
-        if (bindingResult.hasErrors()) {
-            throw new BadRequestException("invalid parameter form");
-        }
-
-        // check duplicated nickname
-        if (playerRepository.findByNickname(command.getNickname()).isPresent()) {
-            throw new DuplicateException("already exist nickname");
-        }
-
-        PlayerModel player = new PlayerModel();
-        player.setNickname(command.getNickname());
-        player.setUserId(userRepository.findByUserId(command.getUserId()).get());
-        player = playerRepository.save(player);
-
-        HistoryModel history = new HistoryModel();
-        history.setPlayerId(player);
-        history = historyRepository.save(history);
-
-        WeaponRelation weaponRelation = new WeaponRelation();
-        weaponRelation.setPlayerId(player);
-        weaponRelation.setUsableCount(Integer.MAX_VALUE);
-        weaponRelation.setWeaponId(weaponRepository.findOne(1));
-        weaponRelation = weaponRelationRepository.save(weaponRelation);
-
-        modelMapper.getConfiguration().setMatchingStrategy(MatchingStrategies.LOOSE);
-        HistoryDTO historyDTO = modelMapper.map(history, HistoryDTO.class);
-
-        PlayerWeaponDTO playerWeaponDTO = modelMapper.map(weaponRelation.getWeaponId(), PlayerWeaponDTO.class);
-        playerWeaponDTO.setUsableCount(weaponRelation.getUsableCount());
-
-        List<PlayerWeaponDTO> weaponList = new ArrayList<>(1);
-        weaponList.add(playerWeaponDTO);
-
-        return new PlayerDTO(player.getNickname(),
-                player.getTier(),
-                player.getScore(),
-                historyDTO,
-                weaponList,
-                player.getPoint());
     }
 
     @RequestMapping(value = "/signin", method = RequestMethod.POST)

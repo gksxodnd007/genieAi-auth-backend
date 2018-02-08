@@ -39,9 +39,9 @@ public class SessionTokenRedisRepository {
         String oldTokenKey = SESSION + ":" + oldToken;
         String userKey = USER + ":" + userId;
 
-        valueOps.getOperations().expire(oldTokenKey, 0L, TimeUnit.NANOSECONDS);
-        valueOps.set(newTokenKey, data);
-        valueOps.set(userKey, newToken);
+        expireSession(oldTokenKey, userId);
+        valueOps.set(newTokenKey, data, EXPIRED_TIME, TimeUnit.MINUTES);
+        valueOps.set(userKey, newToken, EXPIRED_TIME, TimeUnit.MINUTES);
     }
 
     public void updateSessionToken(String token, String data) {
@@ -49,27 +49,9 @@ public class SessionTokenRedisRepository {
         valueOps.set(tokenKey, data, EXPIRED_TIME, TimeUnit.MINUTES);
     }
 
-
-    @Deprecated
-    public String findSessionToken(String token, String userId) {
-        String key = SESSION + ":"  + token + ":" + userId;
-        return valueOps.get(key);
-    }
-
     public String findSessionToken(String token) {
         String tokenKey = SESSION + ":" + token;
         return valueOps.get(tokenKey);
-    }
-
-    @Deprecated
-    public boolean isSessionValid(String token, String userId) {
-        String key = SESSION + ":"  + token + ":" + userId;
-        if (valueOps.get(key) == null) {
-            return false;
-        }
-        else {
-            return true;
-        }
     }
 
     public boolean isSessionValid(String token) {
@@ -84,12 +66,6 @@ public class SessionTokenRedisRepository {
 
     public String findSessionUserId(String userId) {
         return valueOps.get(USER + ":" + userId);
-    }
-
-    @Deprecated
-    public boolean deleteSession(String token, String userId) {
-        String tokenKey = SESSION + ":" + token + ":" + userId;
-        return valueOps.getOperations().expire(tokenKey, 0L, TimeUnit.NANOSECONDS);
     }
 
     public boolean expireSession(String token, String userId) {
@@ -109,6 +85,10 @@ public class SessionTokenRedisRepository {
     private boolean deleteSessionUser(String userId) {
         String userKey = USER + ":" + userId;
         return valueOps.getOperations().expire(userKey, 0L, TimeUnit.NANOSECONDS);
+    }
+
+    private void flushSessionUser() {
+        //TODO flush session user;
     }
 
 }
