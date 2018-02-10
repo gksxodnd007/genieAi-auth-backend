@@ -1,5 +1,6 @@
 package com.finder.genie_ai.model.user;
 
+import io.swagger.annotations.ApiModelProperty;
 import lombok.Data;
 
 import javax.persistence.*;
@@ -14,21 +15,29 @@ public class UserModel {
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
     private int id;
+
     @Column(name = "user_id", length = 60, nullable = false, unique = true)
     private String userId;
+
     @Column(name = "passwd", length = 200, nullable = false)
     private String passwd;
+
     @Column(name = "salt", length = 60, nullable = false)
     private String salt;
+
     @Column(name = "user_name", length = 40, nullable = false)
     private String userName;
-    @Column(name = "email", length = 60, nullable = false)
+
+    @Column(name = "email", length = 60, nullable = false, unique = true)
     private String email;
+
     @Column(name = "birth", columnDefinition = "date", nullable = false)
     private LocalDate birth;
+
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
-    @Column(name = "introduce", length = 128)
+
+    @Column(name = "introduce", length = 128, nullable = false)
     private String introduce;
 
     @PrePersist

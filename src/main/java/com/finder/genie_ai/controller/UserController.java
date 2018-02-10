@@ -2,18 +2,11 @@ package com.finder.genie_ai.controller;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.finder.genie_ai.dao.*;
-import com.finder.genie_ai.dto.HistoryDTO;
-import com.finder.genie_ai.dto.PlayerDTO;
-import com.finder.genie_ai.dto.PlayerWeaponDTO;
+import com.finder.genie_ai.dao.PlayerRepository;
+import com.finder.genie_ai.dao.UserRepository;
 import com.finder.genie_ai.dto.UserDTO;
-import com.finder.genie_ai.enumdata.Weapon;
-import com.finder.genie_ai.model.game.history.HistoryModel;
-import com.finder.genie_ai.model.game.item_relation.WeaponRelation;
-import com.finder.genie_ai.model.game.player.PlayerModel;
 import com.finder.genie_ai.exception.*;
-import com.finder.genie_ai.model.game.player.command.PlayerRegisterCommand;
-import com.finder.genie_ai.model.game.weapon.WeaponModel;
+import com.finder.genie_ai.model.game.player.PlayerModel;
 import com.finder.genie_ai.model.session.SessionModel;
 import com.finder.genie_ai.model.user.UserModel;
 import com.finder.genie_ai.model.user.command.UserChangeInfoCommand;
@@ -24,19 +17,13 @@ import com.finder.genie_ai.redis_dao.SessionTokenRedisRepository;
 import com.finder.genie_ai.util.TokenGenerator;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonParser;
-import io.swagger.annotations.Api;
-import io.swagger.annotations.ApiOperation;
-import io.swagger.annotations.ApiResponse;
-import io.swagger.annotations.ApiResponses;
+import io.swagger.annotations.*;
 import org.modelmapper.ModelMapper;
-import org.modelmapper.convention.MatchingStrategies;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
 
-
-import javax.naming.Binding;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.transaction.Transactional;
@@ -44,12 +31,10 @@ import javax.validation.Valid;
 import java.io.UnsupportedEncodingException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Optional;
 
 @RestController
-@RequestMapping(value = "/user")
+@RequestMapping(value = "/genie")
 @Api(value = "genieAi user", description = "Operations pertaining to user rest api")
 public class UserController {
 
@@ -79,17 +64,17 @@ public class UserController {
             @ApiResponse(code = 200, message = "Successfully sign up"),
             @ApiResponse(code = 400, message = "Invalid parameter form"),
             @ApiResponse(code = 409, message = "Duplicated user ID"),
-            @ApiResponse(code = 500, message = "Interanl server error")
+            @ApiResponse(code = 500, message = "Internal server error")
     })
     @Transactional
     @RequestMapping(value = "/signup", method = RequestMethod.POST, produces = "application/json")
     public @ResponseBody UserDTO signupUser(@RequestBody @Valid UserSignUpCommand command,
-                                            BindingResult bindingResult) throws JsonProcessingException, UnsupportedEncodingException {
+                                            BindingResult bindingResult) throws UnsupportedEncodingException {
         if (bindingResult.hasErrors()) {
             System.out.println(command.toString());
             throw new BadRequestException("Invalid parameter form");
         }
-        System.out.println(command.toString());
+        //TODO check duplicate email
         Optional<UserModel> userModel = userRepository.findByUserId(command.getUserId());
         if (userModel.isPresent()) {
             throw new DuplicateException("Duplicated user ID");
@@ -115,18 +100,26 @@ public class UserController {
 
     }
 
+    @ApiOperation(value = "Signin user", response = Void.class)
+    @ApiResponses(value = {
+            @ApiResponse(code = 204, message = "Successfully signin",
+                    responseHeaders = @ResponseHeader(name = "session-token", response = String.class)),
+            @ApiResponse(code = 400, message = "Invalid parameter form"),
+            @ApiResponse(code = 404, message = "Please check your ID or Password"),
+            @ApiResponse(code = 500, message = "Internal server error")
+    })
     @RequestMapping(value = "/signin", method = RequestMethod.POST)
     public void signinUser(@RequestBody @Valid UserSignInCommand command,
                            BindingResult bindingResult,
                            HttpServletRequest request,
                            HttpServletResponse response) throws JsonProcessingException, UnsupportedEncodingException {
         if (bindingResult.hasErrors()) {
-            throw new BadRequestException("invalid signin form");
+            throw new BadRequestException("Invalid parameter form");
         }
 
         UserModel user = userRepository
                             .findByUserId(command.getUserId())
-                            .orElseThrow(() -> new NotFoundException("Doesn't find user by userId. Please register first."));
+                            .orElseThrow(() -> new NotFoundException("Please check your ID or Password"));
         if (bCryptPasswordEncoder.matches(command.getPasswd() + user.getSalt(), user.getPasswd())) {
             response.setStatus(204);
 
@@ -144,15 +137,25 @@ public class UserController {
             response.setHeader("session-token", newToken);
         }
         else {
-            throw new UnauthorizedException();
+            throw new NotFoundException("Please check your ID or Password");
         }
-
     }
 
+    @ApiOperation(value = "Signout user", response = Void.class)
+    @ApiResponses(value = {
+            @ApiResponse(code = 204, message = "Successfully signout",
+                    responseHeaders = @ResponseHeader(name = "expired-token", response = Boolean.class)),
+            @ApiResponse(code = 401, message = "Invalid or expired session-token"),
+            @ApiResponse(code = 500, message = "Internal server error")
+    })
     @RequestMapping(value = "/signout", method = RequestMethod.DELETE)
     public void signoutUser(@RequestHeader(name = "session-token") String token,
                             @RequestHeader(name = "userId") String userId,
                             HttpServletResponse response) {
+        if (!sessionTokenRedisRepository.isSessionValid(token)) {
+            throw new UnauthorizedException();
+        }
+
         if (sessionTokenRedisRepository.expireSession(token, userId)) {
             response.setHeader("expired-token", Boolean.TRUE.toString());
         }
@@ -162,24 +165,33 @@ public class UserController {
         response.setStatus(204);
     }
 
-    @RequestMapping(value = "/checkDup/{userId}", method = RequestMethod.GET)
+    @ApiOperation(value = "Check Duplicated user ID when signin", response = Void.class)
+    @ApiResponses(value = {
+            @ApiResponse(code = 204, message = "Successfully "),
+            @ApiResponse(code = 409, message = "Duplicated user ID"),
+            @ApiResponse(code = 500, message = "Internal server error")
+    })
+    @RequestMapping(value = "/user/checkDup/{userId}", method = RequestMethod.GET)
     public void checkDup(@PathVariable("userId") String userId, HttpServletResponse response) {
-        if (userId == null) {
-            throw new BadRequestException("doesn't exist path variable");
-        }
 
         if (userRepository.findByUserId(userId).isPresent()) {
-            response.setHeader("isDup", Boolean.toString(true));
+            throw new DuplicateException("Duplicated user ID");
         }
-        else {
-            response.setHeader("isDup", Boolean.toString(false));
-        }
+
+        response.setStatus(204);
     }
 
-    @RequestMapping(value = "/{userId}", method = RequestMethod.GET, produces = "application/json")
+    @ApiOperation(value = "Get user information", response = UserDTO.class)
+    @ApiResponses(value = {
+            @ApiResponse(code = 200, message = "Successfully get user info"),
+            @ApiResponse(code = 401, message = "Invalid or expired session-token"),
+            @ApiResponse(code = 404, message = "Please check user ID"),
+            @ApiResponse(code = 500, message = "Internal server error")
+    })
+    @RequestMapping(value = "/user/{userId}", method = RequestMethod.GET, produces = "application/json")
     public @ResponseBody UserDTO getUserInfo(@PathVariable("userId") String userId,
                                              @RequestHeader(name = "session-token") String token,
-                                                HttpServletRequest request) throws JsonProcessingException, UnsupportedEncodingException {
+                                             HttpServletRequest request) throws JsonProcessingException {
         if (!sessionTokenRedisRepository.isSessionValid(token)) {
             throw new UnauthorizedException();
         }
@@ -189,8 +201,8 @@ public class UserController {
         sessionTokenRedisRepository.updateSessionToken(token, mapper.writeValueAsString(sessionModel));
 
         UserModel user =  userRepository
-                            .findByUserId(userId)
-                            .orElseThrow(() -> new NotFoundException("Doesn't find user by userId"));
+                .findByUserId(userId)
+                .orElseThrow(() -> new NotFoundException("Please check user ID"));
 
         UserDTO userDTO = modelMapper.map(user, UserDTO.class);
 
@@ -199,25 +211,33 @@ public class UserController {
             userDTO.setNickname(playerModel.get().getNickname());
         }
         else {
-            userDTO.setNickname("0");
+            userDTO.setNickname(playerRepository.findByUserId(user).get().getNickname());
         }
 
         return userDTO;
     }
 
-    @RequestMapping(value = "/{userId}", method = RequestMethod.PUT, produces = "application/json")
+    @ApiOperation(value = "Modify user information", response = UserDTO.class)
+    @ApiResponses(value = {
+            @ApiResponse(code = 200, message = "Successfully modify user information"),
+            @ApiResponse(code = 400, message = "Invalid parameter form"),
+            @ApiResponse(code = 401, message = "Invalid or expired session-token"),
+            @ApiResponse(code = 404, message = "Please check your ID or Password"),
+            @ApiResponse(code = 500, message = "Internal server error")
+    })
+    @RequestMapping(value = "/user/{userId}", method = RequestMethod.PUT, produces = "application/json")
     public @ResponseBody UserDTO updateUserInfo(@PathVariable("userId") String userId,
                                                    @RequestBody @Valid UserChangeInfoCommand command,
                                                    BindingResult bindingResult,
                                                    @RequestHeader(name = "session-token") String token,
                                                    HttpServletRequest request) throws JsonProcessingException {
         if (bindingResult.hasErrors()) {
-            throw new BadRequestException("Please follow data form");
+            throw new BadRequestException("Invalid parameter form");
         }
 
         UserModel user = userRepository
                 .findByUserId(userId)
-                .orElseThrow(() -> new NotFoundException("Doesn't find user by userId. Please register first."));
+                .orElseThrow(() -> new NotFoundException("Please check your ID or Password"));
 
         if (!sessionTokenRedisRepository.isSessionValid(token)
                 || !bCryptPasswordEncoder.matches(command.getPasswd() + user.getSalt(), user.getPasswd())) {
@@ -248,18 +268,26 @@ public class UserController {
         return userDTO;
     }
 
-    @RequestMapping(value = "/{userId}", method = RequestMethod.DELETE)
+    @ApiOperation(value = "Delete user information", response = Void.class)
+    @ApiResponses(value = {
+            @ApiResponse(code = 204, message = "Successfully delete user information"),
+            @ApiResponse(code = 400, message = "Invalid parameter form"),
+            @ApiResponse(code = 401, message = "Invalid or expired session-token"),
+            @ApiResponse(code = 404, message = "Please check your ID or Password"),
+            @ApiResponse(code = 500, message = "Internal server error")
+    })
+    @RequestMapping(value = "/user/{userId}", method = RequestMethod.DELETE)
     public void deleteUser(@PathVariable("userId") String userId,
                            @RequestHeader(name = "session-token") String token,
                            @RequestBody @Valid UserDeleteCommand command,
                            BindingResult bindingResult,
                            HttpServletRequest request) throws JsonProcessingException {
-        if (userId == null || bindingResult.hasErrors()) {
-            throw new BadRequestException("Please follow data form");
+        if (bindingResult.hasErrors()) {
+            throw new BadRequestException("Invalid parameter form");
         }
         UserModel user = userRepository
                 .findByUserId(userId)
-                .orElseThrow(() -> new NotFoundException("Doesn't find user by userId. Please register first."));
+                .orElseThrow(() -> new NotFoundException("Please check your ID or Password"));
 
         if (!sessionTokenRedisRepository.isSessionValid(token)
                 || !bCryptPasswordEncoder.matches(command.getPasswd() + user.getSalt(), user.getPasswd())) {
