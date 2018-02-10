@@ -24,6 +24,10 @@ import com.finder.genie_ai.redis_dao.SessionTokenRedisRepository;
 import com.finder.genie_ai.util.TokenGenerator;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonParser;
+import io.swagger.annotations.Api;
+import io.swagger.annotations.ApiOperation;
+import io.swagger.annotations.ApiResponse;
+import io.swagger.annotations.ApiResponses;
 import org.modelmapper.ModelMapper;
 import org.modelmapper.convention.MatchingStrategies;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -46,6 +50,7 @@ import java.util.Optional;
 
 @RestController
 @RequestMapping(value = "/user")
+@Api(value = "genieAi user", description = "Operations pertaining to user rest api")
 public class UserController {
 
     private UserRepository userRepository;
@@ -69,18 +74,25 @@ public class UserController {
         this.bCryptPasswordEncoder = bCryptPasswordEncoder;
     }
 
+    @ApiOperation(value = "Signup user", response = UserDTO.class)
+    @ApiResponses(value = {
+            @ApiResponse(code = 200, message = "Successfully sign up"),
+            @ApiResponse(code = 400, message = "Invalid parameter form"),
+            @ApiResponse(code = 409, message = "Duplicated user ID"),
+            @ApiResponse(code = 500, message = "Interanl server error")
+    })
     @Transactional
     @RequestMapping(value = "/signup", method = RequestMethod.POST, produces = "application/json")
     public @ResponseBody UserDTO signupUser(@RequestBody @Valid UserSignUpCommand command,
                                             BindingResult bindingResult) throws JsonProcessingException, UnsupportedEncodingException {
         if (bindingResult.hasErrors()) {
             System.out.println(command.toString());
-            throw new BadRequestException("invalid parameter form");
+            throw new BadRequestException("Invalid parameter form");
         }
         System.out.println(command.toString());
         Optional<UserModel> userModel = userRepository.findByUserId(command.getUserId());
         if (userModel.isPresent()) {
-            throw new DuplicateException("already exist userId");
+            throw new DuplicateException("Duplicated user ID");
         }
         else {
             UserModel user = new UserModel();
