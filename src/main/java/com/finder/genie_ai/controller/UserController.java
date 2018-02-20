@@ -211,7 +211,7 @@ public class UserController {
             userDTO.setNickname(playerModel.get().getNickname());
         }
         else {
-            userDTO.setNickname(playerRepository.findByUserId(user).get().getNickname());
+            userDTO.setNickname("0");
         }
 
         return userDTO;
