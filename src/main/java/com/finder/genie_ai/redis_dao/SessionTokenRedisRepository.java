@@ -2,7 +2,6 @@ package com.finder.genie_ai.redis_dao;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.RedisTemplate;
-import org.springframework.data.redis.core.SetOperations;
 import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
@@ -28,7 +27,7 @@ public class SessionTokenRedisRepository {
     }
 
     public void saveSessionToken(String token, String userId, String data) {
-        String tokenKey = SESSION + ":"  + token;
+        String tokenKey = SESSION + ":" + token;
         String userKey = USER + ":" + userId;
         valueOps.set(tokenKey, data, EXPIRED_TIME, TimeUnit.MINUTES);
         valueOps.set(userKey, token, EXPIRED_TIME, TimeUnit.MINUTES);
@@ -55,11 +54,10 @@ public class SessionTokenRedisRepository {
     }
 
     public boolean isSessionValid(String token) {
-        String tokenKey = SESSION + ":"  + token;
+        String tokenKey = SESSION + ":" + token;
         if (valueOps.get(tokenKey) == null) {
             return false;
-        }
-        else {
+        } else {
             return true;
         }
     }
@@ -71,8 +69,7 @@ public class SessionTokenRedisRepository {
     public boolean expireSession(String token, String userId) {
         if (deleteSessionToken(token) && deleteSessionUser(userId)) {
             return true;
-        }
-        else {
+        } else {
             return false;
         }
     }
