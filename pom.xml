@@ -5,7 +5,7 @@
 	<groupId>com.finder</groupId>
 	<artifactId>genie_ai</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
-	<packaging>war</packaging>
+	<packaging>jar</packaging>
 
 	<name>genie_ai</name>
 	<description>finder geine_ai auth server project</description>
@@ -113,6 +113,17 @@
 			<groupId>io.springfox</groupId>
 			<artifactId>springfox-swagger-ui</artifactId>
 			<version>2.7.0</version>
+		</dependency>
+
+		<!-- oAuth -->
+		<dependency>
+			<groupId>org.springframework.security.oauth</groupId>
+			<artifactId>spring-security-oauth2</artifactId>
+		</dependency>
+
+		<dependency>
+			<groupId>org.springframework.security</groupId>
+			<artifactId>spring-security-jwt</artifactId>
 		</dependency>
 
     </dependencies>

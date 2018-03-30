@@ -1,8 +1,8 @@
 package com.finder.genie_ai.model.user;
 
-import io.swagger.annotations.ApiModelProperty;
 import lombok.Data;
 
+import javax.annotation.PostConstruct;
 import javax.persistence.*;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -28,6 +28,9 @@ public class UserModel {
     @Column(name = "user_name", length = 40, nullable = false)
     private String userName;
 
+    @Column(name = "user_type", nullable = false)
+    private String userType;
+
     @Column(name = "email", length = 60, nullable = false, unique = true)
     private String email;
 
@@ -43,6 +46,11 @@ public class UserModel {
     @PrePersist
     public void persist() {
         this.createdAt = LocalDateTime.now();
+    }
+
+    @PostConstruct
+    public void init() {
+        this.userType = "user";
     }
 
 }
