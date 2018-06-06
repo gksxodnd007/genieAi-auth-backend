@@ -8,7 +8,7 @@
 	<packaging>jar</packaging>
 
 	<name>genie_ai</name>
-	<description>finder geine_ai auth server project</description>
+	<description>genie-ai 인증 서버</description>
 
 	<parent>
 		<groupId>org.springframework.boot</groupId>
@@ -138,6 +138,5 @@
 			</plugin>
 		</plugins>
 	</build>
-
 
 </project>

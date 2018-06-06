@@ -8,7 +8,12 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.data.jpa.convert.threeten.Jsr310JpaConverters;
 
 @Configuration
-@ComponentScan
+@ComponentScan(basePackages = {
+		"com.finder.genie_ai.configs",
+		"com.finder.genie_ai.controller",
+		"com.finder.genie_ai.dao",
+		"com.finder.genie_ai.exception"
+})
 @EnableAutoConfiguration
 @EntityScan(
 		basePackages = { "com.finder.genie_ai.model" },

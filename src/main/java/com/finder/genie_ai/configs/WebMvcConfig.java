@@ -38,18 +38,30 @@ public class WebMvcConfig extends WebMvcConfigurerAdapter {
         return gsonConverter;
     }
 
-    class LocalDateTimeAdapter implements JsonSerializer<LocalDateTime> {
+    private class LocalDateTimeAdapter implements JsonSerializer<LocalDateTime> {
 
+        @Override
         public JsonElement serialize(LocalDateTime date, Type typeOfSrc, JsonSerializationContext context) {
             return new JsonPrimitive(date.format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss")));
         }
 
     }
 
-    class LocalDateAdapter implements JsonSerializer<LocalDate> {
+    private class LocalDateAdapter implements JsonSerializer<LocalDate> {
 
+        @Override
         public JsonElement serialize(LocalDate date, Type typeOfSrc, JsonSerializationContext context) {
             return new JsonPrimitive(date.format(DateTimeFormatter.ofPattern("yyyy-MM-dd")));
+        }
+
+    }
+
+    private class SpringfoxJsonToGsonAdapter implements JsonSerializer<Json> {
+
+        @Override
+        public JsonElement serialize(Json json, Type type, JsonSerializationContext context) {
+            final JsonParser parser = new JsonParser();
+            return parser.parse(json.value());
         }
 
     }
@@ -62,4 +74,5 @@ public class WebMvcConfig extends WebMvcConfigurerAdapter {
         registry.addResourceHandler("/webjars/**")
                 .addResourceLocations("classpath:/META-INF/resources/webjars/");
     }
+
 }
