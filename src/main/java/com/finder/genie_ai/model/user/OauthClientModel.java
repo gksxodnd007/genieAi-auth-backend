@@ -1,14 +1,7 @@
 package com.finder.genie_ai.model.user;
 
-import lombok.Data;
-
 import javax.persistence.Column;
-import javax.persistence.Entity;
-import javax.persistence.Table;
 
-@Entity
-@Table(name = "oauth_client_details")
-@Data
 public class OauthClientModel {
 
     @Column(name = "client_id", nullable = false, unique = true)

@@ -1,4 +1,4 @@
-package com.finder.genie_ai.dao;
+package com.finder.genie_ai.dao.mysql;
 
 import com.finder.genie_ai.model.game.item_relation.WeaponRelation;
 import com.finder.genie_ai.model.game.player.PlayerModel;

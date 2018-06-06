@@ -1,4 +1,4 @@
-package com.finder.genie_ai.redis_dao;
+package com.finder.genie_ai.dao.redis;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.RedisTemplate;
