@@ -7,17 +7,19 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
-import javax.transaction.Transactional;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
 
 @Repository
 public interface UserRepository extends JpaRepository<UserModel, Integer> {
 
     Optional<UserModel> findByUserId(String userId);
+    Optional<UserModel> findByEmail(String email);
+
+    List<UserModel> findByUserIdOrEmail(String userId, String mail);
 
     @Modifying(clearAutomatically = true)
-    @Transactional
     @Query(value = "UPDATE users" +
             "SET user_name = :userName, email = :email, birth = :birth, introduce = :introduce " +
             "WHERE user_id = :userId", nativeQuery = true)
@@ -28,7 +30,6 @@ public interface UserRepository extends JpaRepository<UserModel, Integer> {
                        @Param("userId") String userId);
 
     @Modifying
-    @Transactional
     @Query(value = "DELETE FROM users WHERE user_id = :userId", nativeQuery = true)
     void deleteByUserId(@Param("userId") String userId);
 

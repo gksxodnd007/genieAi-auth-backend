@@ -12,6 +12,7 @@ import org.springframework.data.jpa.convert.threeten.Jsr310JpaConverters;
 		"com.finder.genie_ai.configs",
 		"com.finder.genie_ai.controller",
 		"com.finder.genie_ai.dao",
+		"com.finder.genie_ai.service",
 		"com.finder.genie_ai.exception"
 })
 @EnableAutoConfiguration

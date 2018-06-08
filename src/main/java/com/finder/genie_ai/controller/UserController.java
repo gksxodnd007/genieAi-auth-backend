@@ -4,7 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.finder.genie_ai.dao.mysql.PlayerRepository;
 import com.finder.genie_ai.dao.mysql.UserRepository;
-import com.finder.genie_ai.dto.UserDTO;
+import com.finder.genie_ai.dto.UserDto;
 import com.finder.genie_ai.exception.*;
 import com.finder.genie_ai.model.game.player.PlayerModel;
 import com.finder.genie_ai.model.session.SessionModel;
@@ -57,47 +57,6 @@ public class UserController {
         this.sessionTokenRedisRepository = sessionTokenRedisRepository;
         this.mapper = mapper;
         this.bCryptPasswordEncoder = bCryptPasswordEncoder;
-    }
-
-    @ApiOperation(value = "Signup user", response = UserDTO.class)
-    @ApiResponses(value = {
-            @ApiResponse(code = 200, message = "Successfully sign up"),
-            @ApiResponse(code = 400, message = "Invalid parameter form"),
-            @ApiResponse(code = 409, message = "Duplicated user ID"),
-            @ApiResponse(code = 500, message = "Internal server error")
-    })
-    @Transactional
-    @RequestMapping(value = "/signup", method = RequestMethod.POST, produces = "application/json")
-    public @ResponseBody UserDTO signupUser(@RequestBody @Valid UserSignUpCommand command,
-                                            BindingResult bindingResult) throws UnsupportedEncodingException {
-        if (bindingResult.hasErrors()) {
-            System.out.println(command.toString());
-            throw new BadRequestException("Invalid parameter form");
-        }
-        //TODO check duplicate email
-        Optional<UserModel> userModel = userRepository.findByUserId(command.getUserId());
-        if (userModel.isPresent()) {
-            throw new DuplicateException("Duplicated user ID");
-        }
-        else {
-            UserModel user = new UserModel();
-            String salt = TokenGenerator.generateSaltValue();
-
-            user.setUserId(command.getUserId());
-            System.out.println(bCryptPasswordEncoder.encode(command.getPasswd() + salt));
-            user.setPasswd(bCryptPasswordEncoder.encode(command.getPasswd() + salt));
-            user.setSalt(salt);
-            user.setUserName(command.getUserName());
-            user.setEmail(command.getEmail());
-            user.setBirth(LocalDate.parse(command.getBirth()));
-            user.setIntroduce(command.getIntroduce());
-
-            user = userRepository.save(user);
-            UserDTO userDTO = modelMapper.map(user, UserDTO.class);
-
-            return userDTO;
-        }
-
     }
 
     @ApiOperation(value = "Signin user", response = Void.class)
@@ -181,7 +140,7 @@ public class UserController {
         response.setStatus(204);
     }
 
-    @ApiOperation(value = "Get user information", response = UserDTO.class)
+    @ApiOperation(value = "Get user information", response = UserDto.class)
     @ApiResponses(value = {
             @ApiResponse(code = 200, message = "Successfully get user info"),
             @ApiResponse(code = 401, message = "Invalid or expired session-token"),
@@ -189,9 +148,10 @@ public class UserController {
             @ApiResponse(code = 500, message = "Internal server error")
     })
     @RequestMapping(value = "/user/{userId}", method = RequestMethod.GET, produces = "application/json")
-    public @ResponseBody UserDTO getUserInfo(@PathVariable("userId") String userId,
-                                             @RequestHeader(name = "session-token") String token,
-                                             HttpServletRequest request) throws JsonProcessingException {
+    public @ResponseBody
+    UserDto getUserInfo(@PathVariable("userId") String userId,
+                        @RequestHeader(name = "session-token") String token,
+                        HttpServletRequest request) throws JsonProcessingException {
         if (!sessionTokenRedisRepository.isSessionValid(token)) {
             throw new UnauthorizedException();
         }
@@ -204,20 +164,20 @@ public class UserController {
                 .findByUserId(userId)
                 .orElseThrow(() -> new NotFoundException("Please check user ID"));
 
-        UserDTO userDTO = modelMapper.map(user, UserDTO.class);
+        UserDto userDto = modelMapper.map(user, UserDto.class);
 
         Optional<PlayerModel> playerModel = playerRepository.findByUserId(user);
         if (playerModel.isPresent()) {
-            userDTO.setNickname(playerModel.get().getNickname());
+            userDto.setNickname(playerModel.get().getNickname());
         }
         else {
-            userDTO.setNickname("0");
+            userDto.setNickname("0");
         }
 
-        return userDTO;
+        return userDto;
     }
 
-    @ApiOperation(value = "Modify user information", response = UserDTO.class)
+    @ApiOperation(value = "Modify user information", response = UserDto.class)
     @ApiResponses(value = {
             @ApiResponse(code = 200, message = "Successfully modify user information"),
             @ApiResponse(code = 400, message = "Invalid parameter form"),
@@ -226,11 +186,12 @@ public class UserController {
             @ApiResponse(code = 500, message = "Internal server error")
     })
     @RequestMapping(value = "/user/{userId}", method = RequestMethod.PUT, produces = "application/json")
-    public @ResponseBody UserDTO updateUserInfo(@PathVariable("userId") String userId,
-                                                   @RequestBody @Valid UserChangeInfoCommand command,
-                                                   BindingResult bindingResult,
-                                                   @RequestHeader(name = "session-token") String token,
-                                                   HttpServletRequest request) throws JsonProcessingException {
+    public @ResponseBody
+    UserDto updateUserInfo(@PathVariable("userId") String userId,
+                           @RequestBody @Valid UserChangeInfoCommand command,
+                           BindingResult bindingResult,
+                           @RequestHeader(name = "session-token") String token,
+                           HttpServletRequest request) throws JsonProcessingException {
         if (bindingResult.hasErrors()) {
             throw new BadRequestException("Invalid parameter form");
         }
@@ -259,13 +220,13 @@ public class UserController {
             throw new ServerException("doesn't execute query");
         }
 
-        UserDTO userDTO = new UserDTO();
-        userDTO.setUserName(command.getUserName());
-        userDTO.setEmail(command.getEmail());
-        userDTO.setBirth(LocalDate.parse(command.getBirth()));
-        userDTO.setIntroduce(command.getIntroduce());
+        UserDto userDto = new UserDto();
+        userDto.setUserName(command.getUserName());
+        userDto.setEmail(command.getEmail());
+        userDto.setBirth(LocalDate.parse(command.getBirth()));
+        userDto.setIntroduce(command.getIntroduce());
 
-        return userDTO;
+        return userDto;
     }
 
     @ApiOperation(value = "Delete user information", response = Void.class)
